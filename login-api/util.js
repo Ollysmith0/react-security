@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const randToken = require("rand-token");
 
 const createToken = (user) => {
   // Sign the JWT
@@ -16,7 +15,7 @@ const createToken = (user) => {
       aud: "api.orbit",
     },
     process.env.JWT_SECRET,
-    { algorithm: "HS256", expiresIn: "5s" }
+    { algorithm: "HS256", expiresIn: "1h" }
   );
 };
 
@@ -53,22 +52,9 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-const getRefreshToken = () => {
-  return randToken.uid(64);
-};
-
-const oneWeek = 7 * 24 * 3600 * 1000;
-
-const getDatePlusOneWeek = () => {
-  return new Date(new Date().valueOf() + oneWeek);
-};
-
 module.exports = {
   createToken,
   hashPassword,
   verifyPassword,
   requireAdmin,
-  getRefreshToken,
-  oneWeek,
-  getDatePlusOneWeek,
 };

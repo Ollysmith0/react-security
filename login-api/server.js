@@ -2,24 +2,18 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const jwt = require("express-jwt");
-const jwtDecode = require("jwt-decode");
 const mongoose = require("mongoose");
+
+const session = require("express-session");
+const csrf = require("csurf");
 const cookieParser = require("cookie-parser");
 
 const dashboardData = require("./data/dashboard");
 const User = require("./data/User");
-const Token = require("./data/Token");
 const InventoryItem = require("./data/InventoryItem");
 
-const {
-  createToken,
-  hashPassword,
-  verifyPassword,
-  getRefreshToken,
-  oneWeek,
-  getDatePlusOneWeek,
-} = require("./util");
+const FileStore = require("session-file-store")(session);
+const { hashPassword, verifyPassword } = require("./util");
 
 const app = express();
 
@@ -28,19 +22,31 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-const saveRefreshToken = async (refreshToken, userId) => {
-  try {
-    const storedRefreshToken = new Token({
-      refreshToken,
-      user: userId,
-      expiresAt: getDatePlusOneWeek(),
-    });
+app.use(
+  session({
+    store: new FileStore({}),
+    secret: process.env.SESSION_SECRET,
+    saveUninitialized: false,
+    resave: false,
+    rolling: true,
+    cookie: {
+      httpOnly: true,
+      sameSite: true,
+      secure: process.env.NODE_ENV === "production" ? true : false,
+      maxAge: parseInt(process.env.SESSION_MAX_AGE),
+    },
+  })
+);
 
-    return await storedRefreshToken.save();
-  } catch (err) {
-    return err;
-  }
-};
+const csrfProtection = csrf({
+  cookie: true,
+});
+
+app.use(csrfProtection);
+
+app.get("/api/csrf-token", (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 app.post("/api/authenticate", async (req, res) => {
   try {
@@ -59,27 +65,21 @@ app.post("/api/authenticate", async (req, res) => {
     const passwordValid = await verifyPassword(password, user.password);
 
     if (passwordValid) {
-      const { password, bio, ...rest } = user;
-      const userInfo = Object.assign({}, { ...rest });
+      const { _id, firstName, lastName, email, role } = user;
 
-      const token = createToken(userInfo);
+      const userInfo = {
+        _id,
+        firstName,
+        lastName,
+        email,
+        role,
+      };
 
-      const expiresAt = getDatePlusOneWeek();
-
-      const refreshToken = getRefreshToken();
-
-      await saveRefreshToken(refreshToken, userInfo._id);
-
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        maxAge: oneWeek,
-      });
+      req.session.user = userInfo;
 
       res.json({
         message: "Authentication successful!",
-        token,
         userInfo,
-        expiresAt,
       });
     } else {
       res.status(403).json({
@@ -118,10 +118,6 @@ app.post("/api/signup", async (req, res) => {
     const savedUser = await newUser.save();
 
     if (savedUser) {
-      const token = createToken(savedUser);
-
-      const expiresAt = getDatePlusOneWeek();
-
       const { _id, firstName, lastName, email, role } = savedUser;
 
       const userInfo = {
@@ -132,20 +128,9 @@ app.post("/api/signup", async (req, res) => {
         role,
       };
 
-      const refreshToken = getRefreshToken();
-
-      await saveRefreshToken(refreshToken, userInfo._id);
-
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        maxAge: oneWeek,
-      });
-
       return res.json({
         message: "User created!",
-        token,
         userInfo,
-        expiresAt,
       });
     } else {
       return res.status(400).json({
@@ -159,92 +144,42 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
-app.get("/api/token/refresh", async (req, res) => {
-  try {
-    const { refreshToken } = req.cookies;
-
-    if (!refreshToken) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
-    const userFromToken = await Token.findOne({
-      refreshToken,
-      expiresAt: { $gte: new Date() },
-    }).select("user");
-
-    if (!userFromToken) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
-    const user = await User.findOne({
-      _id: userFromToken.user,
-    });
-
-    if (!user) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
-    const token = createToken(user);
-
-    return res.json({ token });
-  } catch (err) {
-    return res.status(400).json({ message: "Something went wrong" });
+const requireAuth = (req, res, next) => {
+  const { user } = req.session;
+  if (!user) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-});
-
-app.delete("/api/token/invalidate", async (req, res) => {
-  try {
-    const { refreshToken } = req.cookies;
-
-    if (!refreshToken) {
-      return res.status(400).json({ message: "Something went wrong" });
-    }
-
-    await Token.findByIdAndRemove({
-      refreshToken,
-    });
-
-    res.clearCookie("refreshToken");
-
-    res.json({ message: "Token invalidated" });
-  } catch (err) {
-    return res.status(400).json({ message: "Something went wrong" });
-  }
-});
-
-const attachUser = (req, res, next) => {
-  const token = req.headers.authorization;
-  if (!token) {
-    return res.status(401).json({ message: "Authentication invalid" });
-  }
-  const decodedToken = jwtDecode(token.slice(7));
-
-  if (!decodedToken) {
-    return res.status(401).json({
-      message: "There was a problem authorizing the request",
-    });
-  } else {
-    req.user = decodedToken;
-    next();
-  }
+  next();
 };
 
-app.use(attachUser);
-
-const requireAuth = jwt({
-  secret: process.env.JWT_SECRET,
-  audience: "api.orbit",
-  issuer: "api.orbit",
-  algorithms: ["HS256"],
-});
-
 const requireAdmin = (req, res, next) => {
-  const { role } = req.user;
-  if (role !== "admin") {
+  const { user } = req.session;
+  if (user.role !== "admin") {
     return res.status(401).json({ message: "Insufficient role" });
   }
   next();
 };
+
+app.get("/api/user-info", (req, res) => {
+  const { user } = req.session;
+  if (!user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  setTimeout(() => {
+    res.json({ user });
+  }, 1000);
+});
+
+app.post("/api/logout", requireAuth, (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(400).json({
+        message: "There was a problem logging out",
+      });
+    }
+    res.json({ message: "Logout successful" });
+  });
+});
 
 app.get("/api/dashboard-data", requireAuth, (req, res) =>
   res.json(dashboardData)
@@ -270,9 +205,9 @@ app.patch("/api/user-role", async (req, res) => {
 
 app.get("/api/inventory", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const user = req.user.sub;
+    const { user } = req.session;
     const inventoryItems = await InventoryItem.find({
-      user,
+      user: user._id,
     });
     res.json(inventoryItems);
   } catch (err) {
@@ -282,9 +217,9 @@ app.get("/api/inventory", requireAuth, requireAdmin, async (req, res) => {
 
 app.post("/api/inventory", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const { user } = req.session;
     const input = Object.assign({}, req.body, {
-      user: userId,
+      user: user._id,
     });
     const inventoryItem = new InventoryItem(input);
     await inventoryItem.save();
@@ -305,9 +240,10 @@ app.delete(
   requireAdmin,
   async (req, res) => {
     try {
+      const { user } = req.session;
       const deletedItem = await InventoryItem.findOneAndDelete({
         _id: req.params.id,
-        user: req.user.sub,
+        user: user._id,
       });
       res.status(201).json({
         message: "Inventory item deleted!",
@@ -339,15 +275,15 @@ app.get("/api/users", requireAuth, async (req, res) => {
 
 app.get("/api/bio", requireAuth, async (req, res) => {
   try {
-    const { sub } = req.user;
-    const user = await User.findOne({
-      _id: sub,
+    const { user } = req.session;
+    const foundUser = await User.findOne({
+      _id: user._id,
     })
       .lean()
       .select("bio");
 
     res.json({
-      bio: user.bio,
+      bio: foundUser.bio,
     });
   } catch (err) {
     return res.status(400).json({
@@ -358,11 +294,11 @@ app.get("/api/bio", requireAuth, async (req, res) => {
 
 app.patch("/api/bio", requireAuth, async (req, res) => {
   try {
-    const { sub } = req.user;
+    const { user } = req.session;
     const { bio } = req.body;
     const updatedUser = await User.findOneAndUpdate(
       {
-        _id: sub,
+        _id: user._id,
       },
       {
         bio,
