@@ -1,19 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import signout from "../assets/images/signout.svg";
 import downArrow from "../assets/images/downArrow.svg";
+import avatar from "../assets/images/avatar.svg";
+import { AuthContext } from "./../context/AuthContext";
 
-const DropdownItem = ({ item }) => {
-  return (
-    <button
-      className="text-gray-700 flex items-center w-full"
-      onClick={item.onClick}
-    >
-      <img className="w-5" src={item.icon} alt="logout" />
-      <p className="ml-2">{item.title}</p>
-    </button>
-  );
-};
+const DropdownItem = ({ item }) => (
+  <button className="text-gray-700 flex items-center" onClick={item.onClick}>
+    <img className="w-5" src={item.icon} alt="logout" />
+    <p className="ml-2">{item.title}</p>
+  </button>
+);
 
 const DropdownContent = ({ dropdownItems }) => {
   return (
@@ -31,27 +27,27 @@ const DropdownContent = ({ dropdownItems }) => {
 
 const AvatarDropdown = () => {
   const node = useRef();
+  const auth = useContext(AuthContext);
+  const { authState } = auth;
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { logout, user } = useAuth0();
 
   const dropdownItems = [
     {
       title: "Log Out",
       icon: signout,
-      onClick: () => logout({ returnTo: window.location.origin }),
+      onClick: auth.logout,
     },
   ];
 
   const handleClick = (e) => {
     if (!node.current.contains(e.target)) {
       setDropdownOpen(false);
-    } else {
-      setDropdownOpen(true);
     }
   };
 
   useEffect(() => {
     document.addEventListener("mousedown", handleClick);
+
     return () => {
       document.removeEventListener("mousedown", handleClick);
     };
@@ -62,14 +58,15 @@ const AvatarDropdown = () => {
       <button
         ref={node}
         className="flex rounded-full items-center py-2 px-3 bg-mygreen focus:outline-none shadow-lg"
+        onClick={() => setDropdownOpen(!dropdownOpen)}
       >
         <img
-          src={user.picture}
+          src={authState.userInfo.avatar || avatar}
           className="rounded-full w-6 border-2 border-white"
           alt="Avatar"
         />
         <div className="px-3">
-          <p className="text-white">{user.nickname}</p>
+          <p className="text-white">{authState.userInfo.firstName}</p>
         </div>
         <div className="mr-1 text-white">
           <img className="white w-3" src={downArrow} alt="downArrow" />

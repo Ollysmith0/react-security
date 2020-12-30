@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import PageTitle from "../components/common/PageTitle";
 import { FetchContext } from "../context/FetchContext";
 import Card from "../components/common/Card";
@@ -6,39 +6,36 @@ import avatar from "../assets/images/avatar.svg";
 import DOMPurify from "dompurify";
 
 const UserDetailLabel = ({ text }) => (
-  <p className="mt-2 uppercase font-bold text-gray-500 text-sx">{text}</p>
+  <p className="mt-2 uppercase font-bold text-gray-500 text-xs">{text}</p>
 );
+const UserDetail = ({ user }) => (
+  <Card>
+    <div className="flex">
+      <div className="w-24">
+        <img src={user.avatar || avatar} alt="avatar" />
+      </div>
 
-const UserDetail = ({ user }) => {
-  return (
-    <Card>
-      <div className="flex">
-        <div className="w-24">
-          <img src={user.avatar || avatar} alt={`${user.avatar}`} />
-        </div>
+      <div>
+        <p className="font-bold text-lg">
+          {user.firstName} {user.lastName}
+        </p>
 
-        <div>
-          <p className="font-bold text-lg">
-            {user.firstName} {user.lastName}
-          </p>
-
-          <div className="mt-2">
-            <UserDetailLabel text="Bio" />
-            {user.bio ? (
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(user.bio),
-                }}
-              />
-            ) : (
-              <p className="text-gray-500 italic">No bio set</p>
-            )}
-          </div>
+        <div className="mt-2">
+          <UserDetailLabel text="Bio" />
+          {user.bio ? (
+            <div
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(user.bio),
+              }}
+            />
+          ) : (
+            <p className="text-gray-500 italic">No bio set</p>
+          )}
         </div>
       </div>
-    </Card>
-  );
-};
+    </div>
+  </Card>
+);
 
 const Users = () => {
   const fetchContext = useContext(FetchContext);
@@ -60,15 +57,12 @@ const Users = () => {
     <>
       <PageTitle title="Users" />
       <div className="flex flex-col">
-        {users.length &&
-          users.map((user) => {
-            console.log(user);
-            return (
-              <div className="m-2" key={user._id}>
-                <UserDetail user={user} />
-              </div>
-            );
-          })}
+        {!!users.length &&
+          users.map((user) => (
+            <div className="m-2" key={user._id}>
+              <UserDetail user={user} />
+            </div>
+          ))}
       </div>
     </>
   );

@@ -1,10 +1,12 @@
-import React, { useState, useContext } from "react";
+import React, { useContext, useState } from "react";
 import PageTitle from "../components/common/PageTitle";
 import Card from "../components/common/Card";
 import { FetchContext } from "../context/FetchContext";
+import { AuthContext } from "../context/AuthContext";
 
 const Account = () => {
   const fetchContext = useContext(FetchContext);
+  const auth = useContext(AuthContext);
   const [successMessage, setSuccessMessage] = useState();
   const [errorMessage, setErrorMessage] = useState();
 
@@ -28,17 +30,17 @@ const Account = () => {
           <p>Select a role for yourself</p>
           <div className="mt-2 flex">
             <select
-              defaultValue={"admin"}
+              defaultValue={auth.authState.userInfo.role}
               onChange={(e) => setUserRole(e.target.value)}
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
             {successMessage && (
-              <p className="text-mygreen-700 ml-4">{successMessage}</p>
+              <p className="text-green-700 ml-4">{successMessage}</p>
             )}
             {errorMessage && (
-              <p className="text-red-700 ml-4">{errorMessage}</p>
+              <p className="text-red-500 ml-4">{errorMessage}</p>
             )}
           </div>
         </div>

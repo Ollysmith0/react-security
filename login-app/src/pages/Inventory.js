@@ -1,11 +1,11 @@
 import React, { useContext, useEffect, useState } from "react";
 import PageTitle from "../components/common/PageTitle";
 import { FetchContext } from "../context/FetchContext";
-import { formatCurrency } from "../util";
-import InventoryItemForm from "../components/InventoryItemForm";
-import DangerButton from "../components/common/DangerButton";
-import FormError from "../components/FormError";
-import FormSuccess from "../components/FormSuccess";
+import { formatCurrency } from "./../util";
+import InventoryItemForm from "./../components/InventoryItemForm";
+import DangerButton from "./../components/common/DangerButton";
+import FormError from "./../components/FormError";
+import FormSuccess from "./../components/FormSuccess";
 
 const InventoryItemContainer = ({ children }) => (
   <div className="bg-white rounded shadow-md mb-4 p-4">{children}</div>
@@ -59,13 +59,13 @@ const Inventory = () => {
         console.log("the err", err);
       }
     };
+
     getInventory();
   }, [fetchContext]);
 
   const onSubmit = async (values, resetForm) => {
     try {
       const { data } = await fetchContext.authAxios.post("inventory", values);
-      console.log(data);
       setInventory([...inventory, data.inventoryItem]);
       resetForm();
       setSuccessMessage(data.message);
@@ -92,8 +92,6 @@ const Inventory = () => {
       setErrorMessage(data.message);
     }
   };
-
-  console.log(inventory);
 
   return (
     <>

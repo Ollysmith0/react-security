@@ -1,17 +1,18 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import PageTitle from "../components/common/PageTitle";
+import DashboardMetric from "./../components/DashboardMetric";
 import Card from "../components/common/Card";
 import chart from "../assets/images/chart.svg";
 import dollar from "../assets/images/dollar.svg";
 import users from "../assets/images/users.svg";
 import { FetchContext } from "../context/FetchContext";
-import { formatCurrency } from "../util";
-import DashboardChart from "../components/DashboardChart";
-import DashboardMetric from "../components/DashboardMetric";
+import { formatCurrency } from "./../util";
+import DashboardChart from "./../components/DashboardChart";
 
 const Dashboard = () => {
   const fetchContext = useContext(FetchContext);
   const [dashboardData, setDashboardData] = useState();
+
   useEffect(() => {
     const getDashboardData = async () => {
       try {
@@ -21,6 +22,7 @@ const Dashboard = () => {
         console.log(err);
       }
     };
+
     getDashboardData();
   }, [fetchContext]);
 

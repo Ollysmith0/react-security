@@ -1,14 +1,17 @@
-import React from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import React, { useContext } from "react";
+import { Link } from "react-router-dom";
+import { AuthContext } from "./../context/AuthContext";
+import GradientLink from "../components/common/GradientLink";
+import GradientBar from "./../components/common/GradientBar";
 import logo from "../assets/images/logo.svg";
 import homeBG from "../assets/images/homeBG.jpeg";
-import { Link } from "react-router-dom";
-import GradientButton from "../components/common/GradientButton";
 
 const Home = () => {
-  const { loginWithRedirect, isAuthenticated } = useAuth0();
+  const auth = useContext(AuthContext);
+
   return (
     <>
+      <GradientBar />
       <div className="w-full top-0 bg-mygreen px-10 py-5">
         <div className="grid grid-cols-3 grid-rows-1">
           <img className="inline-block w-12 h-full" src={logo} alt="logo" />
@@ -24,40 +27,31 @@ const Home = () => {
             >
               Sign Up
             </Link>
-            {isAuthenticated ? (
-              <GradientButton to="/dashboard" text="Go to Dashboard" />
-            ) : (
-              <GradientButton
-                className="bg-white text-mygreen"
-                onClick={loginWithRedirect}
-                text="Log in"
-              />
-            )}
+            <GradientLink
+              to={auth.isAuthenticated() ? "/dashboard" : "/login"}
+              text="Log In"
+            />
           </div>
         </div>
       </div>
-      <div className="h-full bg-mygreen-900">
+      <div className="h-full bg-blue-900">
         <div className="opacity-90">
           <img className="object-full w-full" src={homeBG} alt="homebg" />
         </div>
-        <div className="absolute left-0 top-0 mt-32 lg:mt-48 px-12">
+        <div className="absolute left-0 top-0 mt-32 lg:mt-48 px-12 nato-sans">
           <div className="w-full lg:w-2/3">
-            <h1 className="text-white text-2xl lg:leading-tight lg:text-6xl sm:text-5xl font-bold">
+            <h1 className="text-gray-200 text-2xl lg:text-6xl sm:text-5xl font-bold leading-tight">
               Sales Data Management That Works For Your Team
             </h1>
-            <h2 className="text-white text-md sm:text-2xl sm:mt-10 mt-4">
+            <h2 className="text-gray-400 text-md sm:text-2xl sm:mt-10 mt-4">
               Take the pain out of managing your sales data
             </h2>
             <div className="mt-4 sm:mt-10 w-48">
-              {isAuthenticated ? (
-                <GradientButton to="/dashboard" text="Go to Dashboard" />
-              ) : (
-                <GradientButton
-                  className="bg-white text-mygreen"
-                  onClick={loginWithRedirect}
-                  text="Get Started"
-                />
-              )}
+              <GradientLink
+                text="Get Started"
+                size="lg"
+                to={auth.isAuthenticated() ? "/dashboard" : "/login"}
+              />
             </div>
           </div>
         </div>

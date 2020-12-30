@@ -1,11 +1,11 @@
 import React, { useContext, useState, useEffect } from "react";
 import PageTitle from "../components/common/PageTitle";
-import Card from "../components/common/Card";
+import Card from "./../components/common/Card";
 import GradientButton from "../components/common/GradientButton";
 import { Formik, Form, Field } from "formik";
-import { FetchContext } from "../context/FetchContext";
-import FormError from "../components/FormError";
-import FormSuccess from "../components/FormSuccess";
+import { FetchContext } from "./../context/FetchContext";
+import FormError from "./../components/FormError";
+import FormSuccess from "./../components/FormSuccess";
 
 const Settings = () => {
   const fetchContext = useContext(FetchContext);

@@ -1,27 +1,12 @@
-import React, { createContext, useEffect, useState, useCallback } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import React, { createContext, useContext } from "react";
 import axios from "axios";
+import { AuthContext } from "./AuthContext";
 
 const FetchContext = createContext();
 const { Provider } = FetchContext;
 
 const FetchProvider = ({ children }) => {
-  const [accessToken, setAccessToken] = useState();
-  const { getAccessTokenSilently } = useAuth0();
-
-  const getAccessToken = useCallback(async () => {
-    try {
-      const token = await getAccessTokenSilently();
-      console.log(token);
-      setAccessToken(token);
-    } catch (err) {
-      console.log(err);
-    }
-  }, [getAccessTokenSilently]);
-
-  useEffect(() => {
-    getAccessToken();
-  }, [getAccessToken]);
+  const authContext = useContext(AuthContext);
 
   const authAxios = axios.create({
     baseURL: process.env.REACT_APP_API_URL,
@@ -29,7 +14,7 @@ const FetchProvider = ({ children }) => {
 
   authAxios.interceptors.request.use(
     (config) => {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.Authorization = `Bearer ${authContext.authState.token}`;
       return config;
     },
     (error) => {
@@ -43,8 +28,8 @@ const FetchProvider = ({ children }) => {
     },
     (error) => {
       const code = error && error.response ? error.response.status : 0;
-      if (code === 401) {
-        getAccessToken();
+      if (code === 401 || code === 403) {
+        console.log("error code", code);
       }
       return Promise.reject(error);
     }

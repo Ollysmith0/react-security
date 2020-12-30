@@ -1,5 +1,4 @@
-import React, { lazy, Suspense } from "react";
-import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
+import React, { lazy, Suspense, useContext } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -7,13 +6,14 @@ import {
   Redirect,
 } from "react-router-dom";
 
-import logo from "./assets/images/logo.svg";
-
+import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { FetchProvider } from "./context/FetchContext";
 
 import AppShell from "./AppShell";
 
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import FourOFour from "./pages/FourOFour";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -30,6 +30,12 @@ const LoadingFallback = () => (
 
 const UnauthenticatedRoutes = () => (
   <Switch>
+    <Route path="/login">
+      <Login />
+    </Route>
+    <Route path="/signup">
+      <Signup />
+    </Route>
     <Route exact path="/">
       <Home />
     </Route>
@@ -40,26 +46,12 @@ const UnauthenticatedRoutes = () => (
 );
 
 const AuthenticatedRoute = ({ children, ...rest }) => {
-  const { isAuthenticated } = useAuth0();
+  const auth = useContext(AuthContext);
   return (
     <Route
       {...rest}
       render={() =>
-        isAuthenticated ? <AppShell>{children}</AppShell> : <Redirect to="/" />
-      }
-    ></Route>
-  );
-};
-
-const AdminRoute = ({ children, ...rest }) => {
-  const { user, isAuthenticated } = useAuth0();
-  const roles = user[`${process.env.REACT_APP_JWT_NAMESPACE}/roles`];
-  const isAdmin = roles[0] === "admin" ? true : false;
-  return (
-    <Route
-      {...rest}
-      render={() =>
-        isAuthenticated && isAdmin ? (
+        auth.isAuthenticated() ? (
           <AppShell>{children}</AppShell>
         ) : (
           <Redirect to="/" />
@@ -69,23 +61,23 @@ const AdminRoute = ({ children, ...rest }) => {
   );
 };
 
-const LoadingLogo = () => {
+const AdminRoute = ({ children, ...rest }) => {
+  const auth = useContext(AuthContext);
   return (
-    <div className="sefl-center">
-      <img className="w-32" src={logo} alt={`${logo}`} />
-    </div>
+    <Route
+      {...rest}
+      render={() =>
+        auth.isAuthenticated() && auth.isAdmin() ? (
+          <AppShell>{children}</AppShell>
+        ) : (
+          <Redirect to="/" />
+        )
+      }
+    ></Route>
   );
 };
 
 const AppRoutes = () => {
-  const { isLoading } = useAuth0();
-  if (isLoading) {
-    return (
-      <div className="h-screen flex justify-center">
-        <LoadingLogo />
-      </div>
-    );
-  }
   return (
     <>
       <Suspense fallback={<LoadingFallback />}>
@@ -112,34 +104,17 @@ const AppRoutes = () => {
   );
 };
 
-const requestedScopes = [
-  "read:dashboard",
-  "delete:inventory",
-  "edit:inventory",
-  "edit:user",
-  "read:inventory",
-  "read:user",
-  "read:users",
-  "write:inventory",
-];
-
 function App() {
   return (
-    <Auth0Provider
-      domain={process.env.REACT_APP_AUTH0_DOMAIN}
-      clientId={process.env.REACT_APP_AUTH0_CLIENT_ID}
-      redirectUri={`${window.location.origin}/dashboard`}
-      audience={process.env.REACT_APP_AUTH0_AUDIENCE}
-      scope={requestedScopes.join(" ")}
-    >
-      <Router>
+    <Router>
+      <AuthProvider>
         <FetchProvider>
           <div className="bg-gray-100">
             <AppRoutes />
           </div>
         </FetchProvider>
-      </Router>
-    </Auth0Provider>
+      </AuthProvider>
+    </Router>
   );
 }
 
