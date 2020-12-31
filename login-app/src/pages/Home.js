@@ -7,8 +7,8 @@ import logo from "../assets/images/logo.svg";
 import homeBG from "../assets/images/homeBG.jpeg";
 
 const Home = () => {
-  const auth = useContext(AuthContext);
-
+  const { authState } = useContext(AuthContext);
+  console.log(authState);
   return (
     <>
       <GradientBar />
@@ -28,7 +28,7 @@ const Home = () => {
               Sign Up
             </Link>
             <GradientLink
-              to={auth.isAuthenticated() ? "/dashboard" : "/login"}
+              to={authState.isAuthenticated ? "/dashboard" : "/login"}
               text="Log In"
             />
           </div>
@@ -50,7 +50,7 @@ const Home = () => {
               <GradientLink
                 text="Get Started"
                 size="lg"
-                to={auth.isAuthenticated() ? "/dashboard" : "/login"}
+                to={authState.isAuthenticated ? "/dashboard" : "/login"}
               />
             </div>
           </div>
