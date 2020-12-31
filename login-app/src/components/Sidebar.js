@@ -53,7 +53,7 @@ const NavItem = ({ navItem }) => {
   return (
     <Link to={navItem.path} className={classes}>
       <div className="flex items-center">
-        <div className="mr-0 sm:mr-4">
+        <div className="mr-0 sm: mr-1">
           <img
             className="w-6 sm:w-6 sm:h-4"
             src={navItem.icon}

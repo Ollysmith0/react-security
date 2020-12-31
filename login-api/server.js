@@ -4,19 +4,44 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const jwt = require("express-jwt");
 const jwtDecode = require("jwt-decode");
+const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 
 const dashboardData = require("./data/dashboard");
 const User = require("./data/User");
+const Token = require("./data/Token");
 const InventoryItem = require("./data/InventoryItem");
 
-const { createToken, hashPassword, verifyPassword } = require("./util");
+const {
+  createToken,
+  hashPassword,
+  verifyPassword,
+  getRefreshToken,
+  oneWeek,
+  getDatePlusOneWeek,
+} = require("./util");
+const { create } = require("./data/User");
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(cookieParser());
+
+const saveRefreshToken = async (refreshToken, userId) => {
+  try {
+    const storedRefreshToken = new Token({
+      refreshToken,
+      user: userId,
+      expiresAt: getDatePlusOneWeek(),
+    });
+
+    return await storedRefreshToken.save();
+  } catch (err) {
+    return err;
+  }
+};
 
 app.post("/api/authenticate", async (req, res) => {
   try {
@@ -39,9 +64,16 @@ app.post("/api/authenticate", async (req, res) => {
       const userInfo = Object.assign({}, { ...rest });
 
       const token = createToken(userInfo);
+      const expiresAt = getDatePlusOneWeek();
 
-      const decodedToken = jwtDecode(token);
-      const expiresAt = decodedToken.exp;
+      const refreshToken = getRefreshToken();
+
+      await saveRefreshToken(refreshToken, userInfo._id);
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        maxAge: oneWeek,
+      });
 
       res.json({
         message: "Authentication successful!",
@@ -87,17 +119,26 @@ app.post("/api/signup", async (req, res) => {
 
     if (savedUser) {
       const token = createToken(savedUser);
-      const decodedToken = jwtDecode(token);
-      const expiresAt = decodedToken.exp;
+      const expiresAt = getDatePlusOneWeek();
 
-      const { firstName, lastName, email, role } = savedUser;
+      const { _id, firstName, lastName, email, role } = savedUser;
 
       const userInfo = {
+        _id,
         firstName,
         lastName,
         email,
         role,
       };
+
+      const Token = getRefreshToken();
+
+      await saveRefreshToken(Token, userInfo._id);
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        maxAge: oneWeek,
+      });
 
       return res.json({
         message: "User created!",
@@ -114,6 +155,58 @@ app.post("/api/signup", async (req, res) => {
     return res.status(400).json({
       message: "There was a problem creating your account",
     });
+  }
+});
+
+app.get("/api/token/refresh", async (req, res) => {
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    const userFromToken = await Token.findOne({
+      refreshToken,
+      expiresAt: { $gte: new Date() },
+    }).select("user");
+
+    if (!userFromToken) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    const user = await User.findOne({
+      _id: userFromToken.user,
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    const token = createToken(user);
+
+    return res.json({ token });
+  } catch (err) {
+    return res.status(400).json({ message: "Something went wrong " });
+  }
+});
+
+app.delete("/api/token/invalidate", async (req, res) => {
+  try {
+    const { refreshToken } = req.cookies;
+    console.log(refreshToken);
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Something went wrong " });
+    }
+
+    await Token.findOneAndRemove({
+      refreshToken,
+    });
+
+    res.clearCookie("refreshToken");
+    return res.json({ message: "Token invalidated" });
+  } catch (err) {
+    return res.status(400).json({ message: "Something went wrong " });
   }
 });
 
@@ -140,6 +233,7 @@ const requireAuth = jwt({
   secret: process.env.JWT_SECRET,
   audience: "api.orbit",
   issuer: "api.orbit",
+  algorithms: ["HS256"],
 });
 
 const requireAdmin = (req, res, next) => {
