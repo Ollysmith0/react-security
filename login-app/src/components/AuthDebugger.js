@@ -20,7 +20,6 @@ const AuthDebugger = () => {
     const getAccessToken = async () => {
       try {
         const token = await getAccessTokenSilently();
-        console.log(token);
         setAccessToken(token);
       } catch (err) {
         console.log(err);

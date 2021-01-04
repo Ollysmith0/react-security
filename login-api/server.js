@@ -143,10 +143,10 @@ const requireAuth = jwt({
     cache: true,
     rateLimit: true,
     jwksRequestsPerMinute: 5,
-    jwksUri: "https://lukereactsecurity.us.auth0.com/.well-known/jwks.json",
+    jwksUri: process.env.AUTH0_JWKS_URI,
   }),
-  audience: "https://api.luke/",
-  issuer: "https://lukereactsecurity.us.auth0.com/",
+  audience: process.env.AUTH0_AUDIENCE,
+  issuer: process.env.AUTH0_ISSUER,
   algorithms: ["RS256"],
 });
 

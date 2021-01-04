@@ -4,6 +4,7 @@ import logo from "../assets/images/logo.svg";
 import homeBG from "../assets/images/homeBG.jpeg";
 import { Link } from "react-router-dom";
 import GradientButton from "../components/common/GradientButton";
+import GradientLink from "../components/common/GradientLink";
 
 const Home = () => {
   const { loginWithRedirect, isAuthenticated } = useAuth0();
@@ -25,7 +26,7 @@ const Home = () => {
               Sign Up
             </Link>
             {isAuthenticated ? (
-              <GradientButton to="/dashboard" text="Go to Dashboard" />
+              <GradientLink to="/dashboard" text="Go to Dashboard" />
             ) : (
               <GradientButton
                 className="bg-white text-mygreen"
@@ -50,7 +51,7 @@ const Home = () => {
             </h2>
             <div className="mt-4 sm:mt-10 w-48">
               {isAuthenticated ? (
-                <GradientButton to="/dashboard" text="Go to Dashboard" />
+                <GradientLink to="/dashboard" text="Go to Dashboard" />
               ) : (
                 <GradientButton
                   className="bg-white text-mygreen"
